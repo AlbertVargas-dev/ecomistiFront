@@ -1,10 +1,6 @@
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// Sin StrictMode: el escáner QR (html5-qrcode) no tolera el doble montaje en dev.
+createRoot(document.getElementById('root')).render(<App />)
