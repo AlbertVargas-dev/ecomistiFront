@@ -1,16 +1,28 @@
-# React + Vite
+# EcoMisti Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend de **EcoMisti** (React 19 + Vite + Tailwind CSS v4) que consume el backend `ecomistiBack`.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+React 19 · Vite 8 · Tailwind v4 · react-router-dom · axios · html5-qrcode · qrcode
 
-## React Compiler
+## Ejecución
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+pnpm install
+cp .env.example .env   # VITE_API_URL=http://localhost:3000/api
+pnpm run dev           # http://localhost:5173
+pnpm run build
+```
 
-## Expanding the ESLint configuration
+## Vistas por rol
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- **Admin:** Panel General (resumen, tendencia, mapa, tabla), Recolecciones, Rutas, Puntos, Reportes, Estadísticas, EcoPuntos, Recompensas, Factores, Ciudadanos, Vehículos, Personal, Incidencias, Cooperativas (Copaff).
+- **Ciudadano/Urbanización:** Mi Panel (puntos, kg, recompensas), Recompensas, Vouchers, Mi QR (real), Movimientos, Entregas, Mi Perfil, Reportar Incidencia, campanita de notificaciones.
+- **Recolector:** Mi Panel, Escanear QR (cámara) o ingresar DNI, Sincronizar offline.
+
+## Documentación
+
+Ver [`docs/`](docs/README.md) — índice con overview, setup Tailwind, arquitectura, auth, pantallas por rol, sync y checklist (incl. `08-tareas-backend-diseno.md`).
+
+Backend: `http://localhost:3000/api` · Swagger: `http://localhost:3000/api/docs`
