@@ -26,7 +26,6 @@ La aplicación adapta sus pantallas según el rol del usuario autenticado: cada 
 ```bash
 git clone git@github-universidad:AlbertVargas-dev/ecomistiFront.git
 cd ecomistiFront
-git checkout fabriciodev
 pnpm install
 ```
 
