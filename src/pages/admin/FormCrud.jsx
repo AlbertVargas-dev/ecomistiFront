@@ -3,7 +3,7 @@
  * (puntos, vehículos, cooperativas, factores).
  * campos: [{ clave, label, tipo?, opciones?, placeholder? }]
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 export default function FormCrud({
   titulo,
@@ -11,19 +11,14 @@ export default function FormCrud({
   inicial,
   onGuardar,
   onCancelar,
+  enModal = false,
 }) {
   const [form, setForm] = useState(inicial)
 
-  // Al pulsar Editar, precargar los datos del registro elegido.
-  // (Depende del contenido serializado para no resetear mientras se escribe.)
-  const inicialJson = JSON.stringify(inicial)
-  useEffect(() => {
-    setForm(JSON.parse(inicialJson))
-  }, [inicialJson])
-
   async function submit(e) {
     e.preventDefault()
-    await onGuardar(form)
+    const ok = await onGuardar(form)
+    if (ok !== false && !onCancelar) setForm(inicial)
   }
 
   const input =
@@ -32,9 +27,15 @@ export default function FormCrud({
   return (
     <form
       onSubmit={submit}
-      className="mt-6 grid gap-3 rounded-2xl bg-white p-5 shadow-sm md:grid-cols-2"
+      className={
+        enModal
+          ? 'grid gap-3 md:grid-cols-2'
+          : 'mt-6 grid gap-3 rounded-2xl bg-white p-5 shadow-sm md:grid-cols-2'
+      }
     >
-      <h2 className="font-semibold text-gray-800 md:col-span-2">{titulo}</h2>
+      {!enModal && titulo && (
+        <h2 className="font-semibold text-gray-800 md:col-span-2">{titulo}</h2>
+      )}
       {campos.map((c) => (
         <label key={c.clave} className="text-sm font-medium text-gray-700">
           {c.label}
