@@ -6,6 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+.env
 
 node_modules
 dist
@@ -23,6 +24,9 @@ dist-ssr
 *.sln
 *.sw?
 
+<<<<<<< HEAD
+*docs
+=======
 # Environment
 .env
 .env.*
@@ -30,3 +34,4 @@ dist-ssr
 
 # Documentacion local (no se sube)
 docs/
+>>>>>>> fabriciodev
