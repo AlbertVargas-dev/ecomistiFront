@@ -51,7 +51,17 @@ export default function Personal() {
   }
 
   useEffect(() => {
-    cargar()
+    let activo = true
+    Promise.all([api.get('/admin/recolectores'), api.get('/admin/cooperativas')])
+      .then(([{ data: rec }, { data: coop }]) => {
+        if (!activo) return
+        setPersonal(rec)
+        setCooperativas(coop)
+      })
+      .catch((err) => activo && setError(mensajeError(err)))
+    return () => {
+      activo = false
+    }
   }, [])
 
   async function crear(e) {

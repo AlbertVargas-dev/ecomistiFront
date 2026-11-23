@@ -1,18 +1,105 @@
 import { useEffect, useState } from 'react'
 import { api, mensajeError } from '../../lib/api.js'
+import Modal from '../../components/Modal.jsx'
 
-/** Rutas: lista + crear/editar con recolector asignado (diseño: menú Rutas). */
+const VACIO = { nombre: '', zona: '', recolectorId: '', estado: 'ACTIVA' }
+
+function FormRuta({ inicial, recolectores, textoBoton, onGuardar, onCancelar, enModal = false }) {
+  const [form, setForm] = useState(inicial)
+  const input =
+    'mt-1 w-full rounded-lg border px-3 py-2 outline-none focus:border-emerald-500'
+
+  async function submit(e) {
+    e.preventDefault()
+    const ok = await onGuardar(form)
+    if (ok && !onCancelar) setForm(inicial)
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      className={
+        enModal
+          ? 'grid gap-3 md:grid-cols-2'
+          : 'mt-6 grid gap-3 rounded-2xl bg-white p-5 shadow-sm md:grid-cols-2'
+      }
+    >
+      {!enModal && (
+        <h2 className="font-semibold text-gray-800 md:col-span-2">Nueva ruta</h2>
+      )}
+      <label className="text-sm font-medium text-gray-700">
+        Nombre
+        <input
+          value={form.nombre}
+          onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+          required
+          placeholder="Ruta Sur 1"
+          className={input}
+        />
+      </label>
+      <label className="text-sm font-medium text-gray-700">
+        Zona
+        <input
+          value={form.zona}
+          onChange={(e) => setForm({ ...form, zona: e.target.value })}
+          placeholder="Paucarpata"
+          className={input}
+        />
+      </label>
+      <label className="text-sm font-medium text-gray-700">
+        Recolector asignado
+        <select
+          value={form.recolectorId}
+          onChange={(e) => setForm({ ...form, recolectorId: e.target.value })}
+          className={input}
+        >
+          <option value="">Sin asignar</option>
+          {recolectores.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.nombres} {r.apellidos}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="text-sm font-medium text-gray-700">
+        Estado
+        <select
+          value={form.estado}
+          onChange={(e) => setForm({ ...form, estado: e.target.value })}
+          className={input}
+        >
+          <option value="ACTIVA">Activa</option>
+          <option value="SUSPENDIDA">Suspendida</option>
+        </select>
+      </label>
+      <div className="flex gap-2 md:col-span-2">
+        <button
+          type="submit"
+          className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700"
+        >
+          {textoBoton}
+        </button>
+        {onCancelar && (
+          <button
+            type="button"
+            onClick={onCancelar}
+            className="rounded-lg border px-4 py-2 text-sm"
+          >
+            Cancelar
+          </button>
+        )}
+      </div>
+    </form>
+  )
+}
+
+/** Rutas: lista + crear/editar en modal con recolector asignado. */
 export default function Rutas() {
   const [rutas, setRutas] = useState([])
   const [recolectores, setRecolectores] = useState([])
   const [error, setError] = useState('')
+  const [errorModal, setErrorModal] = useState('')
   const [msg, setMsg] = useState('')
-  const [form, setForm] = useState({
-    nombre: '',
-    zona: '',
-    recolectorId: '',
-    estado: 'ACTIVA',
-  })
   const [editando, setEditando] = useState(null)
 
   async function cargar() {
@@ -29,12 +116,22 @@ export default function Rutas() {
   }
 
   useEffect(() => {
-    cargar()
+    let activo = true
+    Promise.all([api.get('/admin/rutas'), api.get('/admin/recolectores')])
+      .then(([{ data: r }, { data: rec }]) => {
+        if (!activo) return
+        setRutas(r)
+        setRecolectores(rec)
+      })
+      .catch((err) => activo && setError(mensajeError(err)))
+    return () => {
+      activo = false
+    }
   }, [])
 
-  async function guardar(e) {
-    e.preventDefault()
+  async function guardar(form, idEdicion = null) {
     setError('')
+    setErrorModal('')
     setMsg('')
     try {
       const payload = {
@@ -43,32 +140,24 @@ export default function Rutas() {
         recolectorId: form.recolectorId || undefined,
         estado: form.estado,
       }
-      if (editando) {
-        await api.patch(`/admin/rutas/${editando}`, payload)
+      if (idEdicion) {
+        await api.patch(`/admin/rutas/${idEdicion}`, payload)
       } else {
         await api.post('/admin/rutas', payload)
       }
-      setMsg(editando ? 'Ruta actualizada.' : 'Ruta creada.')
+      setMsg(idEdicion ? 'Ruta actualizada.' : 'Ruta creada.')
       setEditando(null)
-      setForm({ nombre: '', zona: '', recolectorId: '', estado: 'ACTIVA' })
       cargar()
+      return true
     } catch (err) {
-      setError(mensajeError(err))
+      const m = mensajeError(err)
+      if (idEdicion) setErrorModal(m)
+      else setError(m)
+      return false
     }
   }
 
-  function editar(r) {
-    setEditando(r.id)
-    setForm({
-      nombre: r.nombre,
-      zona: r.zona ?? '',
-      recolectorId: r.recolectorId ?? '',
-      estado: r.estado,
-    })
-  }
-
-  const input =
-    'mt-1 w-full rounded-lg border px-3 py-2 outline-none focus:border-emerald-500'
+  const rutaActual = rutas.find((r) => r.id === editando)
 
   return (
     <div>
@@ -81,79 +170,42 @@ export default function Rutas() {
         <p className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{msg}</p>
       )}
 
-      <form
-        onSubmit={guardar}
-        className="mt-6 grid gap-3 rounded-2xl bg-white p-5 shadow-sm md:grid-cols-2"
+      <FormRuta
+        inicial={VACIO}
+        recolectores={recolectores}
+        textoBoton="Crear ruta"
+        onGuardar={(form) => guardar(form)}
+      />
+
+      <Modal
+        abierto={!!rutaActual}
+        titulo="Editar ruta"
+        error={errorModal}
+        onCerrar={() => {
+          setEditando(null)
+          setErrorModal('')
+        }}
       >
-        <h2 className="font-semibold text-gray-800 md:col-span-2">
-          {editando ? 'Editar ruta' : 'Nueva ruta'}
-        </h2>
-        <label className="text-sm font-medium text-gray-700">
-          Nombre
-          <input
-            value={form.nombre}
-            onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-            required
-            placeholder="Ruta Sur 1"
-            className={input}
+        {rutaActual && (
+          <FormRuta
+            key={rutaActual.id}
+            enModal
+            inicial={{
+              nombre: rutaActual.nombre,
+              zona: rutaActual.zona ?? '',
+              recolectorId: rutaActual.recolectorId ?? '',
+              estado: rutaActual.estado,
+            }}
+            recolectores={recolectores}
+            textoBoton="Guardar cambios"
+            onGuardar={(form) => guardar(form, rutaActual.id)}
+            onCancelar={() => {
+              setEditando(null)
+              setErrorModal('')
+            }}
           />
-        </label>
-        <label className="text-sm font-medium text-gray-700">
-          Zona
-          <input
-            value={form.zona}
-            onChange={(e) => setForm({ ...form, zona: e.target.value })}
-            placeholder="Paucarpata"
-            className={input}
-          />
-        </label>
-        <label className="text-sm font-medium text-gray-700">
-          Recolector asignado
-          <select
-            value={form.recolectorId}
-            onChange={(e) => setForm({ ...form, recolectorId: e.target.value })}
-            className={input}
-          >
-            <option value="">Sin asignar</option>
-            {recolectores.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.nombres} {r.apellidos}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm font-medium text-gray-700">
-          Estado
-          <select
-            value={form.estado}
-            onChange={(e) => setForm({ ...form, estado: e.target.value })}
-            className={input}
-          >
-            <option value="ACTIVA">Activa</option>
-            <option value="SUSPENDIDA">Suspendida</option>
-          </select>
-        </label>
-        <div className="flex gap-2 md:col-span-2">
-          <button
-            type="submit"
-            className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700"
-          >
-            {editando ? 'Guardar cambios' : 'Crear ruta'}
-          </button>
-          {editando && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditando(null)
-                setForm({ nombre: '', zona: '', recolectorId: '', estado: 'ACTIVA' })
-              }}
-              className="rounded-lg border px-4 py-2 text-sm"
-            >
-              Cancelar
-            </button>
-          )}
-        </div>
-      </form>
+        )}
+      </Modal>
 
       <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm">
         <table className="w-full text-sm">
@@ -189,7 +241,10 @@ export default function Rutas() {
                 </td>
                 <td className="px-5 py-3">
                   <button
-                    onClick={() => editar(r)}
+                    onClick={() => {
+                      setErrorModal('')
+                      setEditando(r.id)
+                    }}
                     className="text-sm font-medium text-emerald-600"
                   >
                     Editar

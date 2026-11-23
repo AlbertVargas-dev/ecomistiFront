@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, mensajeError } from '../../lib/api.js'
+import Modal from '../../components/Modal.jsx'
 import FormCrud from './FormCrud.jsx'
 
 const CAMPOS = [
@@ -13,6 +14,7 @@ export default function Vehiculos() {
   const [vehiculos, setVehiculos] = useState([])
   const [recolectores, setRecolectores] = useState([])
   const [error, setError] = useState('')
+  const [errorModal, setErrorModal] = useState('')
   const [msg, setMsg] = useState('')
   const [editando, setEditando] = useState(null)
 
@@ -30,27 +32,59 @@ export default function Vehiculos() {
   }
 
   useEffect(() => {
-    cargar()
+    let activo = true
+    Promise.all([api.get('/admin/vehiculos'), api.get('/admin/recolectores')])
+      .then(([{ data: v }, { data: r }]) => {
+        if (!activo) return
+        setVehiculos(v)
+        setRecolectores(r)
+      })
+      .catch((err) => activo && setError(mensajeError(err)))
+    return () => {
+      activo = false
+    }
   }, [])
 
-  async function guardar(form) {
+  async function guardar(form, idEdicion = null) {
     setError('')
+    setErrorModal('')
     setMsg('')
     try {
       const payload = {
-        ...form,
+        placa: form.placa,
+        tipo: form.tipo,
         capacidadKg: Number(form.capacidadKg),
+        recolectorId: form.recolectorId || undefined,
         activo: form.activo === true || form.activo === 'true',
       }
-      if (editando) await api.patch(`/admin/vehiculos/${editando}`, payload)
+      if (idEdicion) await api.patch(`/admin/vehiculos/${idEdicion}`, payload)
       else await api.post('/admin/vehiculos', payload)
-      setMsg(editando ? 'Vehículo actualizado.' : 'Vehículo creado.')
+      setMsg(idEdicion ? 'Vehículo actualizado.' : 'Vehículo creado.')
       setEditando(null)
       cargar()
+      return true
     } catch (err) {
-      setError(mensajeError(err))
+      const m = mensajeError(err)
+      if (idEdicion) setErrorModal(m)
+      else setError(m)
+      return false
     }
   }
+
+  const campos = [
+    ...CAMPOS,
+    {
+      clave: 'recolectorId',
+      label: 'Recolector asignado',
+      opciones: [
+        { value: '', label: 'Sin asignar' },
+        ...recolectores.map((r) => ({
+          value: r.id,
+          label: `${r.nombres} ${r.apellidos}`,
+        })),
+      ],
+    },
+  ]
 
   return (
     <div>
@@ -64,12 +98,33 @@ export default function Vehiculos() {
       )}
 
       <FormCrud
-        titulo={editando ? 'Editar vehículo' : 'Nuevo vehículo'}
-        campos={CAMPOS}
-        inicial={editando ? vehiculos.find((v) => v.id === editando) || {} : { activo: true }}
-        onGuardar={guardar}
-        onCancelar={editando ? () => setEditando(null) : null}
+        titulo="Nuevo vehículo"
+        campos={campos}
+        inicial={{ activo: true }}
+        onGuardar={(form) => guardar(form)}
       />
+
+      <Modal
+        abierto={!!editando}
+        titulo="Editar vehículo"
+        error={errorModal}
+        onCerrar={() => {
+          setEditando(null)
+          setErrorModal('')
+        }}
+      >
+        <FormCrud
+          key={editando}
+          enModal
+          campos={campos}
+          inicial={vehiculos.find((v) => v.id === editando) || {}}
+          onGuardar={(form) => guardar(form, editando)}
+          onCancelar={() => {
+            setEditando(null)
+            setErrorModal('')
+          }}
+        />
+      </Modal>
 
       <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm">
         <table className="w-full text-sm">
@@ -103,7 +158,10 @@ export default function Vehiculos() {
                 </td>
                 <td className="px-5 py-3">
                   <button
-                    onClick={() => setEditando(v.id)}
+                    onClick={() => {
+                      setErrorModal('')
+                      setEditando(v.id)
+                    }}
                     className="text-sm font-medium text-emerald-600"
                   >
                     Editar

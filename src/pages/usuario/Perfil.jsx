@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { api, mensajeError } from '../../lib/api.js'
+import { actualizarUsuarioSesion } from '../../lib/auth.js'
+import { useAuth } from '../../context/useAuth.js'
 
 /** Mi Perfil: actualizar datos personales + cambiar contraseña. */
 export default function Perfil() {
+  const { user, recargarSesion } = useAuth()
   const [form, setForm] = useState({
     nombres: '',
     apellidos: '',
@@ -16,16 +19,21 @@ export default function Perfil() {
   const [msg, setMsg] = useState('')
 
   useEffect(() => {
+    let activo = true
     api
-      .get('/usuarios/me')
-      .then(({ data }) =>
+      .get('/auth/me')
+      .then(({ data }) => {
+        if (!activo) return
         setForm({
           nombres: data.nombres ?? '',
           apellidos: data.apellidos ?? '',
           telefono: data.telefono ?? '',
-        }),
-      )
-      .catch((err) => setError(mensajeError(err)))
+        })
+      })
+      .catch((err) => activo && setError(mensajeError(err)))
+    return () => {
+      activo = false
+    }
   }, [])
 
   async function guardar(e) {
@@ -33,11 +41,13 @@ export default function Perfil() {
     setError('')
     setMsg('')
     try {
-      await api.patch('/usuarios/me', {
+      const { data } = await api.patch('/usuarios/me', {
         nombres: form.nombres,
         apellidos: form.apellidos,
         telefono: form.telefono || undefined,
       })
+      actualizarUsuarioSesion(data)
+      recargarSesion()
       setMsg('Datos actualizados correctamente.')
     } catch (err) {
       setError(mensajeError(err))
@@ -116,45 +126,47 @@ export default function Perfil() {
         </button>
       </form>
 
-      <form
-        onSubmit={cambiarPassword}
-        className="mt-6 grid max-w-lg gap-4 rounded-2xl bg-white p-6 shadow-sm"
-      >
-        <h2 className="font-semibold text-gray-800">Cambiar contraseña</h2>
-        <label className="text-sm font-medium text-gray-700">
-          Contraseña actual
-          <input
-            type="password"
-            required
-            value={passwords.passwordActual}
-            onChange={(e) =>
-              setPasswords({ ...passwords, passwordActual: e.target.value })
-            }
-            className={input}
-          />
-        </label>
-        <label className="text-sm font-medium text-gray-700">
-          Nueva contraseña (mín. 8, letras y números)
-          <input
-            type="password"
-            required
-            minLength={8}
-            pattern="^(?=.*[A-Za-z])(?=.*\d).+$"
-            title="Mínimo 8 caracteres con letras y números"
-            value={passwords.passwordNueva}
-            onChange={(e) =>
-              setPasswords({ ...passwords, passwordNueva: e.target.value })
-            }
-            className={input}
-          />
-        </label>
-        <button
-          type="submit"
-          className="rounded-lg bg-gray-800 px-4 py-2 font-semibold text-white hover:bg-gray-700"
+      {user?.rol !== 'RECOLECTOR' && (
+        <form
+          onSubmit={cambiarPassword}
+          className="mt-6 grid max-w-lg gap-4 rounded-2xl bg-white p-6 shadow-sm"
         >
-          Cambiar contraseña
-        </button>
-      </form>
+          <h2 className="font-semibold text-gray-800">Cambiar contraseña</h2>
+          <label className="text-sm font-medium text-gray-700">
+            Contraseña actual
+            <input
+              type="password"
+              required
+              value={passwords.passwordActual}
+              onChange={(e) =>
+                setPasswords({ ...passwords, passwordActual: e.target.value })
+              }
+              className={input}
+            />
+          </label>
+          <label className="text-sm font-medium text-gray-700">
+            Nueva contraseña (mín. 8, letras y números)
+            <input
+              type="password"
+              required
+              minLength={8}
+              pattern="^(?=.*[A-Za-z])(?=.*\d).+$"
+              title="Mínimo 8 caracteres con letras y números"
+              value={passwords.passwordNueva}
+              onChange={(e) =>
+                setPasswords({ ...passwords, passwordNueva: e.target.value })
+              }
+              className={input}
+            />
+          </label>
+          <button
+            type="submit"
+            className="rounded-lg bg-gray-800 px-4 py-2 font-semibold text-white hover:bg-gray-700"
+          >
+            Cambiar contraseña
+          </button>
+        </form>
+      )}
     </div>
   )
 }

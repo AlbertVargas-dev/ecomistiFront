@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, mensajeError } from '../../lib/api.js'
+import Modal from '../../components/Modal.jsx'
 import FormCrud from './FormCrud.jsx'
 
 const CAMPOS = [
@@ -15,6 +16,7 @@ export default function Cooperativas() {
   const [recolectores, setRecolectores] = useState([])
   const [miembros, setMiembros] = useState({})
   const [error, setError] = useState('')
+  const [errorModal, setErrorModal] = useState('')
   const [msg, setMsg] = useState('')
   const [editando, setEditando] = useState(null)
 
@@ -47,7 +49,17 @@ export default function Cooperativas() {
   }
 
   useEffect(() => {
-    cargar()
+    let activo = true
+    Promise.all([api.get('/admin/cooperativas'), api.get('/admin/recolectores')])
+      .then(([{ data: c }, { data: r }]) => {
+        if (!activo) return
+        setCooperativas(c)
+        setRecolectores(r)
+      })
+      .catch((err) => activo && setError(mensajeError(err)))
+    return () => {
+      activo = false
+    }
   }, [])
 
   async function verMiembros(id) {
@@ -59,24 +71,29 @@ export default function Cooperativas() {
     }
   }
 
-  async function guardar(form) {
+  async function guardar(form, idEdicion = null) {
     setError('')
+    setErrorModal('')
     setMsg('')
     try {
       const payload = {
-        ...form,
+        nombre: form.nombre,
         ruc: form.ruc || undefined,
         direccion: form.direccion || undefined,
         telefono: form.telefono || undefined,
         activo: form.activo === true || form.activo === 'true',
       }
-      if (editando) await api.patch(`/admin/cooperativas/${editando}`, payload)
+      if (idEdicion) await api.patch(`/admin/cooperativas/${idEdicion}`, payload)
       else await api.post('/admin/cooperativas', payload)
-      setMsg(editando ? 'Cooperativa actualizada.' : 'Cooperativa creada.')
+      setMsg(idEdicion ? 'Cooperativa actualizada.' : 'Cooperativa creada.')
       setEditando(null)
       cargar()
+      return true
     } catch (err) {
-      setError(mensajeError(err))
+      const m = mensajeError(err)
+      if (idEdicion) setErrorModal(m)
+      else setError(m)
+      return false
     }
   }
 
@@ -93,12 +110,33 @@ export default function Cooperativas() {
       {''}
 
       <FormCrud
-        titulo={editando ? 'Editar cooperativa' : 'Nueva cooperativa'}
+        titulo="Nueva cooperativa"
         campos={CAMPOS}
-        inicial={editando ? cooperativas.find((c) => c.id === editando) || {} : { activo: true }}
-        onGuardar={guardar}
-        onCancelar={editando ? () => setEditando(null) : null}
+        inicial={{ activo: true }}
+        onGuardar={(form) => guardar(form)}
       />
+
+      <Modal
+        abierto={!!editando}
+        titulo="Editar cooperativa"
+        error={errorModal}
+        onCerrar={() => {
+          setEditando(null)
+          setErrorModal('')
+        }}
+      >
+        <FormCrud
+          key={editando}
+          enModal
+          campos={CAMPOS}
+          inicial={cooperativas.find((c) => c.id === editando) || {}}
+          onGuardar={(form) => guardar(form, editando)}
+          onCancelar={() => {
+            setEditando(null)
+            setErrorModal('')
+          }}
+        />
+      </Modal>
 
       <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {cooperativas.map((c) => (
@@ -125,7 +163,10 @@ export default function Cooperativas() {
                 Ver miembros
               </button>
               <button
-                onClick={() => setEditando(c.id)}
+                onClick={() => {
+                  setErrorModal('')
+                  setEditando(c.id)
+                }}
                 className="text-sm font-medium text-emerald-600"
               >
                 Editar

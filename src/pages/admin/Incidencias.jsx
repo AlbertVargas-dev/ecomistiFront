@@ -17,7 +17,14 @@ export default function Incidencias() {
   }
 
   useEffect(() => {
-    cargar()
+    let activo = true
+    api
+      .get('/admin/incidencias', { params: { take: 50 } })
+      .then(({ data }) => activo && setIncidencias(data))
+      .catch((err) => activo && setError(mensajeError(err)))
+    return () => {
+      activo = false
+    }
   }, [])
 
   async function cambiarEstado(id, estado) {

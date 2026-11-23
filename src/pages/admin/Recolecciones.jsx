@@ -28,7 +28,20 @@ export default function Recolecciones() {
   }
 
   useEffect(() => {
-    cargar(skip, filtros)
+    let activo = true
+    const params = { skip, take: TAKE, ...filtros }
+    Object.keys(params).forEach((k) => !params[k] && delete params[k])
+    api
+      .get('/admin/entregas', { params })
+      .then(({ data }) => {
+        if (!activo) return
+        setError('')
+        setEntregas(data)
+      })
+      .catch((err) => activo && setError(mensajeError(err)))
+    return () => {
+      activo = false
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skip])
 

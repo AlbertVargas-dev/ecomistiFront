@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, mensajeError } from '../../lib/api.js'
-import { leerSesion } from '../../lib/auth.js'
+import { api, exportarReporte, mensajeError } from '../../lib/api.js'
 
 function hoy(offset = 0) {
   const d = new Date()
@@ -32,26 +31,24 @@ export default function Reportes() {
   }
 
   useEffect(() => {
-    cargar()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let activo = true
+    const params = {
+      desde: `${hoy(-29)}T00:00:00.000Z`,
+      hasta: `${hoy(0)}T23:59:59.000Z`,
+    }
+    api
+      .get('/admin/reportes/residuos', { params })
+      .then(({ data }) => activo && setReporte(data))
+      .catch((err) => activo && setError(mensajeError(err)))
+    return () => {
+      activo = false
+    }
   }, [])
 
   async function exportar(formato) {
     setError('')
     try {
-      const { accessToken } = leerSesion()
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/admin/reportes/exportar?formato=${formato}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      )
-      if (!res.ok) throw new Error('No se pudo exportar')
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `reporte-recolecciones.${formato}`
-      a.click()
-      URL.revokeObjectURL(url)
+      await exportarReporte(formato)
     } catch (err) {
       setError(mensajeError(err))
     }

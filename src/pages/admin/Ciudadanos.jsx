@@ -9,20 +9,19 @@ export default function Ciudadanos() {
   const [skip, setSkip] = useState(0)
   const TAKE = 10
 
-  async function cargar(skip) {
-    setError('')
-    try {
-      const { data } = await api.get('/admin/dashboard/clientes', {
-        params: { skip, take: TAKE },
-      })
-      setClientes(data)
-    } catch (err) {
-      setError(mensajeError(err))
-    }
-  }
-
   useEffect(() => {
-    cargar(skip)
+    let activo = true
+    api
+      .get('/admin/dashboard/clientes', { params: { skip, take: TAKE } })
+      .then(({ data }) => {
+        if (!activo) return
+        setError('')
+        setClientes(data)
+      })
+      .catch((err) => activo && setError(mensajeError(err)))
+    return () => {
+      activo = false
+    }
   }, [skip])
 
   async function verDetalle(id) {
