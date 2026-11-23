@@ -44,6 +44,16 @@ export function activarSesion(rol) {
   localStorage.setItem(ACTIVA, rol)
 }
 
+/** Actualiza los datos del usuario en la sesión activa sin perder tokens. */
+export function actualizarUsuarioSesion(user) {
+  const rol = localStorage.getItem(ACTIVA)
+  if (!rol) return
+  const sesiones = leerTodo()
+  if (!sesiones[rol]) return
+  sesiones[rol] = { ...sesiones[rol], user }
+  localStorage.setItem(CLAVE, JSON.stringify(sesiones))
+}
+
 export function limpiarSesion() {
   const rol = localStorage.getItem(ACTIVA)
   if (!rol) return
@@ -58,4 +68,14 @@ export function limpiarSesion() {
 export function limpiarTodo() {
   localStorage.removeItem(CLAVE)
   localStorage.removeItem(ACTIVA)
+}
+
+const RUTAS_POR_ROL = {
+  ADMIN: '/',
+  RECOLECTOR: '/recolector',
+}
+
+/** Ruta inicial correspondiente al rol autenticado. */
+export function rutaInicialPorRol(rol) {
+  return RUTAS_POR_ROL[rol] || '/panel'
 }

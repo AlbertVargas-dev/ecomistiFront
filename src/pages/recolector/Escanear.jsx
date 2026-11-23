@@ -63,7 +63,6 @@ export default function Escanear() {
         scanner.stop().catch(() => {})
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modo, identificado])
 
   async function identificarQr(qrCode) {

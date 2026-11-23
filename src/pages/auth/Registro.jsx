@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, mensajeError } from '../../lib/api.js'
 import { guardarSesion } from '../../lib/auth.js'
-import { useAuth } from '../../context/AuthContext.jsx'
+import { useAuth } from '../../context/useAuth.js'
 
 /**
  * Registro público (spec §4/§11): el rol lo fija el endpoint, nunca el body.

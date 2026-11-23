@@ -16,7 +16,14 @@ export default function Ofertas() {
   }
 
   useEffect(() => {
-    cargar()
+    let activo = true
+    api
+      .get('/ofertas')
+      .then(({ data }) => activo && setOfertas(data))
+      .catch((err) => activo && setError(mensajeError(err)))
+    return () => {
+      activo = false
+    }
   }, [])
 
   async function canjear(id) {

@@ -38,7 +38,26 @@ export default function Estadisticas() {
   }
 
   useEffect(() => {
-    cargar()
+    let activo = true
+    const params = {
+      desde: `${desde}T00:00:00.000Z`,
+      hasta: `${hasta}T23:59:59.000Z`,
+      granularidad,
+    }
+    Promise.all([
+      api.get('/admin/estadisticas/tendencia', { params }),
+      api.get('/admin/estadisticas/mapa-calor'),
+    ])
+      .then(([{ data: t }, { data: m }]) => {
+        if (!activo) return
+        setError('')
+        setSerie(t.serie)
+        setPuntos(m)
+      })
+      .catch((err) => activo && setError(mensajeError(err)))
+    return () => {
+      activo = false
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [granularidad])
 

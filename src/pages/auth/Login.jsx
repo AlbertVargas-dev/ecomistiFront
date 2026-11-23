@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext.jsx'
+import { useAuth } from '../../context/useAuth.js'
 import { mensajeError } from '../../lib/api.js'
+import { rutaInicialPorRol } from '../../lib/auth.js'
 
 /**
  * Login con dos modos (spec §4):
@@ -32,13 +33,7 @@ export default function Login() {
           : { email: form.email, password: form.password }
       const user = await login(credenciales)
       // Destino según rol: admin → Panel General, recolector → escáner, resto → Mi Panel
-      navigate(
-        user.rol === 'ADMIN'
-          ? '/'
-          : user.rol === 'RECOLECTOR'
-            ? '/recolector'
-            : '/panel',
-      )
+      navigate(rutaInicialPorRol(user.rol))
     } catch (err) {
       setError(mensajeError(err))
     } finally {

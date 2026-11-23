@@ -18,7 +18,14 @@ export default function ReportarIncidencia() {
   }
 
   useEffect(() => {
-    cargar()
+    let activo = true
+    api
+      .get('/incidencias/mias')
+      .then(({ data }) => activo && setMis(data))
+      .catch((err) => activo && setError(mensajeError(err)))
+    return () => {
+      activo = false
+    }
   }, [])
 
   async function enviar(e) {

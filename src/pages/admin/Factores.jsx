@@ -30,7 +30,14 @@ export default function Factores() {
   }
 
   useEffect(() => {
-    cargar()
+    let activo = true
+    api
+      .get('/admin/factores')
+      .then(({ data }) => activo && setFactores(data))
+      .catch((err) => activo && setError(mensajeError(err)))
+    return () => {
+      activo = false
+    }
   }, [])
 
   async function guardar(form) {

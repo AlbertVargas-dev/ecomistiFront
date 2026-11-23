@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../lib/api.js'
 import {
   activarSesion,
@@ -7,8 +7,7 @@ import {
   limpiarSesion,
   sesionesDisponibles,
 } from '../lib/auth.js'
-
-const AuthContext = createContext(null)
+import { AuthContext } from './useAuth.js'
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => leerSesion().user)
@@ -56,8 +55,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   )
-}
-
-export function useAuth() {
-  return useContext(AuthContext)
 }

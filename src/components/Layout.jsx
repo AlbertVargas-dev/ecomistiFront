@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext.jsx'
+import { useAuth } from '../context/useAuth.js'
 import { api, mensajeError } from '../lib/api.js'
+import { rutaInicialPorRol } from '../lib/auth.js'
 
 const MENU_ADMIN = [
   { to: '/', label: 'Panel General', icon: '▦' },
@@ -39,6 +40,11 @@ const MENU_RECOLECTOR = [
   { to: '/perfil', label: 'Mi Perfil', icon: '✎' },
 ]
 
+const MENUS_POR_ROL = {
+  ADMIN: MENU_ADMIN,
+  RECOLECTOR: MENU_RECOLECTOR,
+}
+
 function reloj() {
   return new Date().toLocaleTimeString('es-PE', {
     hour: '2-digit',
@@ -52,16 +58,9 @@ export default function Layout() {
 
   function irAPerfil(rol) {
     cambiarPerfil(rol)
-    navigate(
-      rol === 'ADMIN' ? '/' : rol === 'RECOLECTOR' ? '/recolector' : '/panel',
-    )
+    navigate(rutaInicialPorRol(rol))
   }
-  const MENU =
-    user?.rol === 'ADMIN'
-      ? MENU_ADMIN
-      : user?.rol === 'RECOLECTOR'
-        ? MENU_RECOLECTOR
-        : MENU_CIUDADANO
+  const MENU = MENUS_POR_ROL[user?.rol] || MENU_CIUDADANO
   const [q, setQ] = useState('')
   const [resultados, setResultados] = useState(null)
   const [errorBusqueda, setErrorBusqueda] = useState('')
@@ -87,7 +86,7 @@ export default function Layout() {
   const [verNotificaciones, setVerNotificaciones] = useState(false)
 
   useEffect(() => {
-    if (user?.rol === 'ADMIN' || user?.rol === 'RECOLECTOR') return
+    if (user?.rol !== 'CIUDADANO' && user?.rol !== 'URBANIZACION') return
     api
       .get('/usuarios/me/notificaciones')
       .then(({ data }) => setNotificaciones(data))
