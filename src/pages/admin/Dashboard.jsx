@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, mensajeError } from '../../lib/api.js'
-import { leerSesion } from '../../lib/auth.js'
+import { api, exportarReporte, mensajeError } from '../../lib/api.js'
 import { guardarCache, leerCache } from '../../lib/cache.js'
 import GraficoTendencia from '../../components/GraficoTendencia.jsx'
 import MapaCalor from '../../components/MapaCalor.jsx'
@@ -49,53 +48,58 @@ export default function Dashboard() {
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
 
-  const cargar = useCallback(async () => {
+  const obtenerDatos = useCallback(async () => {
     // Caché de 30 s: entrar 5-6 veces al panel no repite las 4 llamadas.
     const clave = `panel:${desde}:${hasta}`
     const cacheado = leerCache(clave)
-    if (cacheado) {
-      setResumen(cacheado.resumen)
-      setSerie(cacheado.serie)
-      setPuntos(cacheado.mapa)
-      setEntregas(cacheado.tabla)
-      return
+    if (cacheado) return cacheado
+
+    const params = {
+      desde: `${desde}T00:00:00.000Z`,
+      hasta: `${hasta}T23:59:59.000Z`,
     }
+    const [{ data }, { data: tendencia }, { data: mapa }, { data: tabla }] =
+      await Promise.all([
+        api.get('/admin/dashboard/resumen', { params }),
+        api.get('/admin/estadisticas/tendencia', {
+          params: { ...params, granularidad: 'dia' },
+        }),
+        api.get('/admin/estadisticas/mapa-calor'),
+        api.get('/admin/entregas', { params: { take: 10 } }),
+      ])
+    const resultado = { resumen: data, serie: tendencia.serie, mapa, tabla }
+    guardarCache(clave, resultado)
+    return resultado
+  }, [desde, hasta])
+
+  const aplicarResultado = useCallback((r) => {
+    setResumen(r.resumen)
+    setSerie(r.serie)
+    setPuntos(r.mapa)
+    setEntregas(r.tabla)
+  }, [])
+
+  async function cargar() {
     setCargando(true)
     setError('')
     try {
-      const params = {
-        desde: `${desde}T00:00:00.000Z`,
-        hasta: `${hasta}T23:59:59.000Z`,
-      }
-      const [{ data }, { data: tendencia }, { data: mapa }, { data: tabla }] =
-        await Promise.all([
-          api.get('/admin/dashboard/resumen', { params }),
-          api.get('/admin/estadisticas/tendencia', {
-            params: { ...params, granularidad: 'dia' },
-          }),
-          api.get('/admin/estadisticas/mapa-calor'),
-          api.get('/admin/entregas', { params: { take: 10 } }),
-        ])
-      setResumen(data)
-      setSerie(tendencia.serie)
-      setPuntos(mapa)
-      setEntregas(tabla)
-      guardarCache(clave, {
-        resumen: data,
-        serie: tendencia.serie,
-        mapa,
-        tabla,
-      })
+      aplicarResultado(await obtenerDatos())
     } catch (err) {
       setError(mensajeError(err))
     } finally {
       setCargando(false)
     }
-  }, [desde, hasta])
+  }
 
   useEffect(() => {
-    cargar()
-  }, [cargar])
+    let activo = true
+    obtenerDatos()
+      .then((r) => activo && aplicarResultado(r))
+      .catch((err) => activo && setError(mensajeError(err)))
+    return () => {
+      activo = false
+    }
+  }, [obtenerDatos, aplicarResultado])
 
   return (
     <div>
@@ -193,19 +197,7 @@ export default function Dashboard() {
                 key={formato}
                 onClick={async () => {
                   try {
-                    const { accessToken: token } = leerSesion()
-                    const res = await fetch(
-                      `${import.meta.env.VITE_API_URL}/admin/reportes/exportar?formato=${formato}`,
-                      { headers: { Authorization: `Bearer ${token}` } },
-                    )
-                    if (!res.ok) throw new Error('No se pudo exportar')
-                    const blob = await res.blob()
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = url
-                    a.download = `reporte-recolecciones.${formato}`
-                    a.click()
-                    URL.revokeObjectURL(url)
+                    await exportarReporte(formato)
                   } catch (err) {
                     setError(mensajeError(err))
                   }

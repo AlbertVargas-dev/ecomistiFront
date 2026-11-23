@@ -53,3 +53,17 @@ export function mensajeError(error) {
   if (Array.isArray(m)) return m.join(', ')
   return m || error?.message || 'Error de red. ¿Está el backend levantado?'
 }
+
+/** Descarga el reporte de recolecciones en CSV o XLSX usando el cliente autenticado. */
+export async function exportarReporte(formato) {
+  const { data } = await api.get('/admin/reportes/exportar', {
+    params: { formato },
+    responseType: 'blob',
+  })
+  const url = URL.createObjectURL(data)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `reporte-recolecciones.${formato}`
+  a.click()
+  URL.revokeObjectURL(url)
+}
