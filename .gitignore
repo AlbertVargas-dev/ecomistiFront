@@ -24,4 +24,14 @@ dist-ssr
 *.sln
 *.sw?
 
+<<<<<<< HEAD
 *docs
+=======
+# Environment
+.env
+.env.*
+!.env.example
+
+# Documentacion local (no se sube)
+docs/
+>>>>>>> fabriciodev
